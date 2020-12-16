@@ -27,7 +27,7 @@ export default ({ app }: { app: express.Application }) => {
   app.use(bodyParser.json());
   // Swagger documentation
   const swaggerDocs = swaggerJsDoc(config.swaggerOptions);
-  config.nodeEnv === 'development' && app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocs));
+  app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocs));
   // Load API routes
   app.use(config.api.prefix, routes());
 

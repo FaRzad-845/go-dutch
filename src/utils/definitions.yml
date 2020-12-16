@@ -1,0 +1,64 @@
+definitions:
+  User:
+    type: object
+    properties:
+      role:
+        type: string
+        example: user
+      verify:
+        type: boolean
+        example: true
+      _id:
+        type: string
+        example: 5fd9cefb059cb5d13722855a
+      phonenumber:
+        type: string
+        example: 09022261378
+
+  Token:
+    type: 
+
+  UserInputDTO:
+    type: object
+    required:
+      - name
+      - phonenumber
+      - password
+    properties:
+      name:
+        type: string
+        example: farzad
+      phonenumber:
+        type: string
+        example: 09022261378
+      password:
+        type: string
+        example: ye password khafan
+        format: password
+
+  LoginUser:
+    type: object
+    required:
+      - phonenumber
+      - password
+    properties:
+      phonenumber:
+        type: string
+        example: 09022261378
+      password:
+        type: string
+        example: ye password khafan
+        format: password
+
+  VerifyUser:
+    type: object
+    required:
+      - phonenumber
+      - code
+    properties:
+      phonenumber:
+        type: string
+        example: 09022261378
+      code:
+        type: string
+        example: '123456'
