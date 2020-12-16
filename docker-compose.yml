@@ -1,0 +1,91 @@
+version: "3.7"
+
+services:
+  app:
+    build: .
+    container_name: go-dutch_api
+    ports:
+      - "8081:8081"
+    environment: 
+      - NODE_ENV=production
+    networks:
+      - go-dutch
+    volumes: 
+      - /node/app/node_modules
+    # depends_on:
+    #   mongodb:
+    #     condition: service_healthy
+    #   redis:
+    #     condition: service_healthy
+    restart: always
+
+  # redis:
+  #   image: redis
+  #   container_name: vpnex_redis
+  #   command: redis-server
+  #   networks:
+  #     - vpnex
+  #   restart: always
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 1s
+  #     timeout: 10s
+  #     retries: 30
+
+  # mongodb:
+  #   image: mongo:4.0.21
+  #   container_name: go-dutch_mongodb
+  #   hostname: mongodb
+  #   environment:
+  #       - MONGO_INITDB_ROOT_USERNAME=admin
+  #       - MONGO_INITDB_ROOT_PASSWORD=awjBYiJT95wXjZzp9v3puK7
+  #   volumes:
+  #     - "./docker/setup.sh:/scripts/setup.sh"
+  #     - "./mongo/configdb:/data/configdb"
+  #     - mongodb_data:/data/db # This is where your volume will persist.
+  #   networks:
+  #     - go-dutch
+  #   restart: always
+  #   healthcheck:
+  #     test: echo 'db.runCommand({serverStatus:1}).ok' | mongo admin -u admin -p awjBYiJT95wXjZzp9v3puK7 --quiet | grep 1
+  #     interval: 10s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 20s
+
+
+  # mongo-express:
+  #   image: mongo-express
+  #   container_name: mongo-gui
+  #   env_file: .env
+  #   environment:
+  #     - ME_CONFIG_OPTIONS_EDITORTHEME=ambiance
+  #     - ME_CONFIG_MONGODB_SERVER=mongodb
+  #     - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
+  #     - ME_CONFIG_OPTIONS_NO_DELETE=true
+  #     - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+  #     - ME_CONFIG_MONGODB_ADMINPASSWORD=awjBYiJT95wXjZzp9v3puK7
+  #   networks: 
+  #     - vpnex
+  #   expose: 
+  #     - 8081
+  #   depends_on:
+  #     - mongodb
+  #   restart: always
+
+#   mongo-dump:
+#     image: weseek/mongodb-awesome-backup
+#     container_name: mongo-dump
+#     env_file: .env
+#     environment:
+#       - CRONMODE=true
+#       - CRON_EXPRESSION=0 0 * * *
+#     networks: 
+#       - vpnex
+
+networks:
+  vpnex:
+    name: go-dutch
+
+# volumes:
+#   mongodb_data:
