@@ -1,31 +1,12 @@
-## To Do
-- Users
-    - invalidate the token in redis
-    - add expire time to token
-    - time left in user model
-    - get the servers (pagination)
-    - add password field to model
-    - add product to user
-    - email verify
+## Go-Dutch
 
+# TODO
 
-- Servers
-    - add server
-    - edit server
-    - get one server
-    - get all servers with pagination
-    - ansible
+1. sms service
+2. logout -> need redis or in memory cache
+3. expire time for generated link -> reset password (test)
+4. send sms the link
+5. validation phonenumber and etc
 
-
-- Purchase product by user
-    - verify product & add transaction to db
-    - ansible
-    - delete users with finished purchased
-
-
-- Devops
-    - add docker-compose
-    - add docker-swarm
-    - add logger to telegram
-    - add users backup section
-    - add bash script for database -> add users
+# Docs
+[swagger-docs](https://go-dutch.iran.liara.run/api-docs/)

@@ -2,7 +2,6 @@ import { Container } from 'typedi';
 import mongoose from 'mongoose';
 import { IUser } from '../../interfaces/IUser';
 import { Logger } from 'winston';
-import { Status } from '../../interfaces/enums';
 
 /**
  * Attach user to req.currentUser
@@ -18,17 +17,12 @@ const attachCurrentUser = async (req, res, next) => {
     if (!userRecord) {
       return res.sendStatus(401);
     }
-    const status = userRecord.status === Status.Free ? Status.Free : Status.Premium;
     const currentUser = userRecord.toObject();
-    Reflect.deleteProperty(currentUser, 'createdAt');
-    Reflect.deleteProperty(currentUser, 'updatedAt');
-    Reflect.deleteProperty(currentUser, '__v');
-    Reflect.deleteProperty(currentUser, 'googleId');
-    Reflect.deleteProperty(currentUser, 'appleId');
-    Reflect.deleteProperty(currentUser, 'status');
+    Reflect.deleteProperty(currentUser, 'password');
+    Reflect.deleteProperty(currentUser, 'salt');
+    Reflect.deleteProperty(currentUser, 'verifyCode');
 
-    req.currentUser = { ...currentUser, status };
-    req.currentStatus = userRecord.status;
+    req.currentUser = currentUser;
     return next();
   } catch (e) {
     Logger.error('🔥 Error attaching user to req: %o', e);

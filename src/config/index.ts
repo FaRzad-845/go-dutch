@@ -14,8 +14,8 @@ export default {
 
   nodeEnv: process.env.NODE_ENV,
 
-  databaseURL:
-    process.env.NODE_ENV === 'development' ? 'mongodb://127.0.0.1:27017/vpnex-backend' : process.env.MONGODB_URI,
+  // ToDO -> good to have multiple database for different environment
+  databaseURL: process.env.NODE_ENV === 'development' ? process.env.MONGODB_URI : process.env.MONGODB_URI,
 
   jwtSecret: process.env.JWT_SECRET,
   jwtAlgorithm: process.env.JWT_ALGO,
@@ -41,12 +41,22 @@ export default {
 
   swaggerOptions: {
     swaggerDefinition: {
+      openapi: '3.0.1',
       info: {
         title: 'Go-Dutch Back-End API',
         version: '1.0.0',
         description: 'All api related to Go-Dutch application .',
       },
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+          },
+        },
+      },
     },
-    apis: ['src/api/routes/*.ts'],
+    apis: ['src/api/routes/*.ts', 'src/utils/definitions.yml'],
   },
 };

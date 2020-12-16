@@ -18,28 +18,4 @@ export default class UserSubscriber {
       throw e;
     }
   }
-
-  @On(events.user.purchased)
-  public onUserPurchased({ email, password }: Partial<IUser>) {
-    const Logger: Logger = Container.get('logger');
-    try {
-      const UserModel = Container.get('UserModel') as mongoose.Model<IUser & mongoose.Document>;
-      Logger.info(email, password);
-    } catch (e) {
-      Logger.error(`🔥 Error on event ${events.user.signIn}: %o`, e);
-      throw e;
-    }
-  }
-
-  @On(events.user.expired)
-  public onUserAccountExpired({ email, password }: Partial<IUser>) {
-    const Logger: Logger = Container.get('logger');
-    try {
-      const UserModel = Container.get('UserModel') as mongoose.Model<IUser & mongoose.Document>;
-      Logger.info(email, password);
-    } catch (e) {
-      Logger.error(`🔥 Error on event ${events.user.signIn}: %o`, e);
-      throw e;
-    }
-  }
 }

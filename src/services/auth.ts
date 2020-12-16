@@ -1,108 +1,145 @@
 import { Service, Inject } from 'typedi';
 import jwt from 'jsonwebtoken';
 import config from '../config';
-import googleValidator from '../utils/google-validator';
-import appleValidator from '../utils/apple-validator';
-import { IUser, IUserAdmin, IUserAppleInputDTO, IUserGoogleInputDTO } from '../interfaces/IUser';
+import argon2 from 'argon2';
+import SmsService from './sms';
+import { IUser, IUserInputDTO, verifyCode } from '../interfaces/IUser';
+import { randomBytes } from 'crypto';
 import { Logger } from 'winston';
-import { Status } from '../interfaces/enums';
 
 @Service()
 export default class AuthService {
-  constructor(@Inject('userModel') private userModel: Models.UserModel, @Inject('logger') private logger: Logger) {}
+  constructor(
+    @Inject('userModel') private userModel: Models.UserModel,
+    private sms: SmsService,
+    @Inject('logger') private logger: Logger,
+  ) {}
 
-  public async Google(userInputDTO: IUserGoogleInputDTO): Promise<{ user: IUser; token: string }> {
+  public async SignUp(userInputDTO: IUserInputDTO): Promise<{ user: IUser }> {
     try {
-      this.logger.silly('Validating incoming request');
-      const { ok, data } = await googleValidator(userInputDTO);
-      if (!ok) {
-        throw new Error('User cannot be created');
-      }
-      // const data = { email: 'farzadshami845@gmail.com', name: 'FaRzad Shami', userId: '106175056830104532938' };
-      const { email, name, userId } = data;
-
-      let userRecord = await this.userModel.findOne({ email, googleId: userId });
-      if (userRecord) {
-        const token = this.generateToken(userRecord);
-        return { token, user: userRecord.toObject() };
-      }
-
+      const salt = randomBytes(32);
+      this.logger.silly('Hashing password');
+      const hashedPassword = await argon2.hash(userInputDTO.password, { salt });
       this.logger.silly('Creating user db record');
-      userRecord = await this.userModel.create({
-        email,
-        name,
-        googleId: userId,
-        status: Status.Free,
+      const verifyCode: verifyCode = {
+        code: '111111',
+        expireTime: new Date(Date.now() + 5 * 60 * 1000),
+      };
+      const userRecord = await this.userModel.create({
+        ...userInputDTO,
+        salt: salt.toString('hex'),
+        password: hashedPassword,
+        verifyCode,
+        verify: false,
       });
-      this.logger.silly('Generating JWT');
-      const token = this.generateToken(userRecord);
 
       if (!userRecord) {
         throw new Error('User cannot be created');
       }
-      return { user: userRecord.toObject(), token };
+      this.logger.silly('Sending code to phonenumber');
+      await this.sms.SendVerifyCode(userRecord.phonenumber);
+
+      const user = userRecord.toObject();
+      Reflect.deleteProperty(user, 'password');
+      Reflect.deleteProperty(user, 'salt');
+      Reflect.deleteProperty(user, 'verifyCode');
+
+      return { user };
     } catch (e) {
       this.logger.error(e);
       throw e;
     }
   }
 
-  public async Apple(userInputDTO: IUserAppleInputDTO): Promise<{ user: IUser; token: string }> {
-    let email;
-    try {
-      const response = await appleValidator.accessToken(userInputDTO.serverAuthCode);
-      this.logger.silly(`[INFO] response ${response}`);
-      email = jwt.decode(response.id_token).email;
-    } catch (e) {
-      this.logger.error(e);
-      throw e;
+  public async Verify(phonenumber: string, code: string) {
+    const userRecord = await this.userModel.findOne({ phonenumber });
+    if (!userRecord) {
+      throw new Error('User not registered');
     }
-    if (email && userInputDTO.fullName && userInputDTO.fullName !== ' ') {
-      try {
-        const user = await this.userModel.create({
-          email,
-          name: userInputDTO.fullName,
-          status: Status.Free,
-          appleId: userInputDTO.userId,
-        });
-        return { user, token: this.generateToken(user) };
-      } catch (e) {
-        this.logger.error(e);
-        throw e;
-      }
+    if (userRecord.verify) {
+      throw new Error('User already verified');
     }
 
-    try {
-      let userRecord = await this.userModel.findOne({ appleId: userInputDTO.userId });
-      if (!userRecord) {
-        userRecord = await this.userModel.create({
-          email,
-          name: userInputDTO.fullName,
-          status: Status.Free,
-          appleId: userInputDTO.userId,
-        });
-      }
+    if (userRecord.verifyCode.code !== code || userRecord.verifyCode.expireTime > new Date()) {
+      throw new Error('Code expired is not valid or expired');
+    }
+    await this.userModel.updateOne({ phonenumber: phonenumber }, { $set: { verify: true } });
+  }
+
+  public async ResendCode(phonenumber: string) {
+    const userRecord = await this.userModel.findOne({ phonenumber });
+    if (!userRecord) {
+      throw new Error('User not registered');
+    }
+    if (userRecord.verify) {
+      throw new Error('User already verified');
+    }
+
+    await this.userModel.updateOne(
+      { phonenumber: phonenumber },
+      { $set: { 'verifyCode.expireTime': new Date(Date.now() + 5 * 60 * 1000) } },
+    );
+  }
+
+  public async ResetPasswordLinkGenerator(phonenumber: string) {
+    const userRecord = await this.userModel.findOne({ phonenumber });
+    if (!userRecord) {
+      throw new Error('User not registered');
+    }
+    if (!userRecord.verify) {
+      throw new Error('User not verified');
+    }
+    this.logger.silly('Generating JWT');
+    const token = this.generateTokenForResetPassword(userRecord);
+    await this.userModel.updateOne({ phonenumber: phonenumber }, { $set: { 'verifyCode.code': token } });
+    this.logger.debug(token);
+  }
+
+  public async ChangePassword(password: string, jwtCode: string) {
+    const decoded = jwt.verify(jwtCode, config.jwtSecret);
+    const userRecord = await this.userModel.findOne({ _id: decoded._id, 'verifyCode.code': jwtCode });
+    if (!userRecord) {
+      throw new Error('User not registered');
+    }
+    if (!userRecord.verify) {
+      throw new Error('User not verified');
+    }
+    const salt = randomBytes(32);
+    this.logger.silly('Hashing password');
+    const hashedPassword = await argon2.hash(password, { salt });
+    this.logger.silly('Creating user db record');
+
+    await this.userModel.updateOne(
+      { _id: decoded._id },
+      { $set: { salt: salt.toString('hex'), password: hashedPassword } },
+    );
+  }
+
+  public async SignIn(phonenumber: string, password: string): Promise<{ user: IUser; token: string }> {
+    const userRecord = await this.userModel.findOne({ phonenumber });
+    if (!userRecord) {
+      throw new Error('User not registered');
+    }
+
+    if (!userRecord.verify) {
+      throw new Error('User not verified');
+    }
+
+    this.logger.silly('Checking password');
+    const validPassword = await argon2.verify(userRecord.password, password);
+    if (validPassword) {
+      this.logger.silly('Password is valid!');
       this.logger.silly('Generating JWT');
       const token = this.generateToken(userRecord);
-      const user = userRecord.toObject();
-      return { user, token };
-    } catch (e) {
-      this.logger.error(e);
-      throw e;
-    }
-  }
 
-  public async Admin(userInputDTO: IUserAdmin): Promise<{ user: IUser; token: string }> {
-    try {
-      const userRecord = await this.userModel.findOne({ name: userInputDTO.name, password: userInputDTO.password });
-      if (!userRecord) {
-        throw new Error('User cannot be find');
-      }
-      const token = this.generateToken(userRecord);
-      return { token, user: userRecord.toObject() };
-    } catch (e) {
-      this.logger.error(e);
-      throw e;
+      const user = userRecord.toObject();
+      Reflect.deleteProperty(user, 'password');
+      Reflect.deleteProperty(user, 'salt');
+      Reflect.deleteProperty(user, 'verifyCode');
+
+      return { user, token };
+    } else {
+      throw new Error('Invalid Password');
     }
   }
 
@@ -110,15 +147,29 @@ export default class AuthService {
     const today = new Date();
     const exp = new Date(today);
     exp.setDate(today.getDate() + 60);
+
     this.logger.silly(`Sign JWT for userId: ${user._id}`);
     return jwt.sign(
       {
         _id: user._id, // We are gonna use this in the middleware 'isAuth'
         role: user.role,
-        email: user.email,
+        name: user.name,
+        exp: exp.getTime() / 1000,
       },
       config.jwtSecret,
-      { algorithm: config.jwtAlgorithm },
+    );
+  }
+
+  private generateTokenForResetPassword(user) {
+    const exp = new Date(Date.now() + 30 * 60 * 1000);
+
+    this.logger.silly(`Sign JWT for userId: ${user._id}`);
+    return jwt.sign(
+      {
+        _id: user._id, // We are gonna use this in the middleware 'isAuth'
+        exp: exp.getTime() / 1000,
+      },
+      config.jwtSecret,
     );
   }
 }

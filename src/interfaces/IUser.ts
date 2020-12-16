@@ -1,26 +1,19 @@
-import { Status } from './enums';
+export interface verifyCode {
+  code: string;
+  expireTime: Date;
+}
 export interface IUser {
   _id: string;
-  email: string;
   name: string;
-  googleId?: string;
-  appleId?: string;
-  status?: string;
-  planId?: string;
-  expireTime?: number;
-}
-
-export interface IUserGoogleInputDTO {
-  token: string;
-}
-
-export interface IUserAppleInputDTO {
-  userId: string;
-  serverAuthCode: string;
-  fullName: string;
-}
-
-export interface IUserAdmin {
-  name: string;
+  phonenumber: string;
   password: string;
+  salt: string;
+  verify: boolean;
+  verifyCode: verifyCode;
+}
+
+export interface IUserInputDTO {
+  phonenumber: string;
+  password: string;
+  name: string;
 }
