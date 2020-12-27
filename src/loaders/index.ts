@@ -14,10 +14,15 @@ export default async ({ expressApp }) => {
     model: require('../models/user').default,
   };
 
+  const groupModel = {
+    name: 'groupModel',
+    model: require('../models/group').default,
+  };
+
   // It returns the agenda instance because it's needed in the subsequent loaders
   const { agenda } = await dependencyInjectorLoader({
     mongoConnection,
-    models: [userModel],
+    models: [userModel, groupModel],
   });
   Logger.info('✌️ Dependency Injector loaded');
 

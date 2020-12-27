@@ -15,7 +15,7 @@ export default {
   nodeEnv: process.env.NODE_ENV,
 
   // ToDO -> good to have multiple database for different environment
-  databaseURL: process.env.NODE_ENV === 'development' ? process.env.MONGODB_URI : process.env.MONGODB_URI,
+  databaseURL: process.env.NODE_ENV === 'development' ? 'mongodb://127.0.0.1:27017/go-dutch' : process.env.MONGODB_URI,
 
   jwtSecret: process.env.JWT_SECRET,
   jwtAlgorithm: process.env.JWT_ALGO,
