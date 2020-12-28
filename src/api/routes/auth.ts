@@ -231,6 +231,55 @@ export default (app: Router) => {
 
   /**
    * @swagger
+   * /api/auth/verify-reset-password:
+   *   post:
+   *     tags:
+   *       - Auth
+   *     description: verify-reset-password request to get token
+   *     produces:
+   *       - application/json
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               phonenumber:
+   *                 type: string
+   *                 example: 09023550300
+   *               code:
+   *                 type: string
+   *                 example: 222222
+   *     responses:
+   *       200:
+   *         description: Successful
+   */
+  route.post(
+    '/verify-reset-password',
+    celebrate({
+      body: Joi.object({
+        phonenumber: Joi.string().required(),
+        code: Joi.string().required(),
+      }),
+    }),
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+      logger.debug('Calling Reset-Password generate link endpoint with body: %o', req.body);
+      try {
+        const { phonenumber, code } = req.body;
+        const authServiceInstance = Container.get(AuthService);
+        const token = await authServiceInstance.VerifyPasswordChange(phonenumber, code);
+        return res.status(200).json({ token });
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
+        return next(e);
+      }
+    },
+  );
+
+  /**
+   * @swagger
    * /api/auth/reset-password/{token}:
    *   put:
    *     tags:

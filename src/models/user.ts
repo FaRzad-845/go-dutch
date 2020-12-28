@@ -1,5 +1,6 @@
 import { IUser } from '../interfaces/IUser';
 import mongoose from 'mongoose';
+require('./group');
 
 const User = new mongoose.Schema(
   {
@@ -31,8 +32,12 @@ const User = new mongoose.Schema(
       code: { type: String, index: true },
       expireTime: Date,
     },
+
+    groups: [{ type: mongoose.Types.ObjectId, ref: 'Group', autopopulate: true }],
   },
   { timestamps: true },
 );
+
+User.plugin(require('mongoose-autopopulate'));
 
 export default mongoose.model<IUser & mongoose.Document>('User', User);
