@@ -39,6 +39,7 @@ const Group = new mongoose.Schema(
       {
         phonenumber: String,
         num: Number,
+        balance: { type: Number, default: 0 },
       },
     ],
 

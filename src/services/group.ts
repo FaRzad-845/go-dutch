@@ -4,8 +4,9 @@ import group from '../models/group';
 
 const calculationOfCreditAndDebt = function (phonenumber, items, members) {
   const allMembersCount = members.map(member => member.num).reduce((prev, curr) => prev + curr, 0);
-  const userFamilyCount = members.filter(member => member.phonenumber == phonenumber)[0].num;
-
+  const user = members.filter(member => member.phonenumber == phonenumber)[0];
+  const userFamilyCount = user.num;
+  const balance = user.balance || 0;
   const credit = items
     .filter(item => item.creator == phonenumber)
     .map(
@@ -28,7 +29,7 @@ const calculationOfCreditAndDebt = function (phonenumber, items, members) {
     )
     .reduce((prev, curr) => prev + curr, 0);
 
-  return { credit, debt };
+  return { credit, debt, balance: credit + balance - debt };
 };
 
 @Service()
@@ -113,6 +114,30 @@ export default class GroupService {
       });
       if (!groupRecord) throw 'you cannot join this group';
       await this.userModel.updateOne({ phonenumber }, { $addToSet: { groups: groupRecord._id } });
+    } catch (e) {
+      this.logger.error(e);
+      throw e;
+    }
+  }
+
+  public async AddBalance(groupId, phonenumber, amount) {
+    try {
+      await this.groupModel.updateOne(
+        { _id: groupId, 'members.phonenumber': phonenumber },
+        { $inc: { 'members.$.balance': amount } },
+      );
+    } catch (e) {
+      this.logger.error(e);
+      throw e;
+    }
+  }
+
+  public async ReduceBalance(groupId, phonenumber, amount) {
+    try {
+      await this.groupModel.updateOne(
+        { _id: groupId, 'members.phonenumber': phonenumber },
+        { $inc: { 'members.$.balance': -amount } },
+      );
     } catch (e) {
       this.logger.error(e);
       throw e;

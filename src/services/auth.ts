@@ -60,8 +60,8 @@ export default class AuthService {
       throw new Error('User already verified');
     }
 
-    if (userRecord.verifyCode.code !== code || userRecord.verifyCode.expireTime > new Date()) {
-      throw new Error('Code expired is not valid or expired');
+    if (userRecord.verifyCode.code !== code) {
+      throw new Error('Code is not valid or expired');
     }
     await this.userModel.updateOne({ phonenumber: phonenumber }, { $set: { verify: true } });
   }
@@ -90,14 +90,25 @@ export default class AuthService {
       throw new Error('User not verified');
     }
     this.logger.silly('Generating JWT');
-    const token = this.generateTokenForResetPassword(userRecord);
-    await this.userModel.updateOne({ phonenumber: phonenumber }, { $set: { 'verifyCode.code': token } });
-    this.logger.debug(token);
+    // const token = this.generateTokenForResetPassword(userRecord);
+    await this.userModel.updateOne({ phonenumber: phonenumber }, { $set: { 'verifyCode.code': '222222' } });
+  }
+
+  public async VerifyPasswordChange(phonenumber: string, code: string) {
+    const userRecord = await this.userModel.findOne({ phonenumber, 'verifyCode.code': code });
+    if (!userRecord) {
+      throw new Error('User not found');
+    }
+    if (!userRecord.verify) {
+      throw new Error('User not verified');
+    }
+    this.logger.silly('Generating JWT');
+    return this.generateTokenForResetPassword(userRecord);
   }
 
   public async ChangePassword(password: string, jwtCode: string) {
     const decoded = jwt.verify(jwtCode, config.jwtSecret);
-    const userRecord = await this.userModel.findOne({ _id: decoded._id, 'verifyCode.code': jwtCode });
+    const userRecord = await this.userModel.findOne({ _id: decoded._id });
     if (!userRecord) {
       throw new Error('User not registered');
     }
