@@ -5,7 +5,6 @@ import image from './routes/image';
 import agendash from './routes/agendash';
 import group from './routes/groups';
 
-
 // guaranteed to get dependencies
 export default () => {
   const app = Router();
