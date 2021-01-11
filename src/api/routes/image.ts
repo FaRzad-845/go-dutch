@@ -1,5 +1,4 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import middlewares from '../middlewares';
 import Grid from 'gridfs-stream';
 import { connection, mongo } from 'mongoose';
 import { Logger } from 'winston';
@@ -16,7 +15,7 @@ connection.once('open', () => {
 export default (app: Router) => {
   app.use('/image', route);
 
-  route.get('/:filename', middlewares.isAuth, async (req: Request, res: Response, next: NextFunction) => {
+  route.get('/:filename', async (req: Request, res: Response, next: NextFunction) => {
     const logger: Logger = Container.get('logger');
     logger.debug('Calling creating group endpoint with body: %o', req.body);
     try {

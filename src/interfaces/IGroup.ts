@@ -1,3 +1,9 @@
+
+interface Member {
+  num: string;
+  phonenumber: string;
+}
+
 export interface IGroup {
   _id: string;
   name: string;
@@ -6,4 +12,5 @@ export interface IGroup {
   wallet: number;
   disabled: boolean;
   creator: string;
+  members: Member[];
 }

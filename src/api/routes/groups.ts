@@ -173,12 +173,15 @@ export default (app: Router) => {
   route.post(
     '/:id/add-item',
     celebrate({
-      body: Joi.object({
-        name: Joi.string().required(),
-        count: Joi.number().required(),
-        unit: Joi.number().required(),
-        status: Joi.string().allow('number-of-heads', 'number-of-members'),
-      }),
+      body: Joi.array().items(
+        Joi.object({
+          name: Joi.string().required(),
+          count: Joi.number().required(),
+          unit: Joi.number().required(),
+          status: Joi.string().allow('number-of-heads', 'number-of-members'),
+          group: Joi.string().required(),
+        }),
+      ),
     }),
     middlewares.isAuth,
     middlewares.attachCurrentUser,
