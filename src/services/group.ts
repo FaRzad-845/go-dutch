@@ -1,6 +1,5 @@
 import { Service, Inject } from 'typedi';
 import { Logger } from 'winston';
-import group from '../models/group';
 
 const calculationOfCreditAndDebt = function (phonenumber, items, members) {
   const allMembersCount = members.map(member => member.num).reduce((prev, curr) => prev + curr, 0);
@@ -32,6 +31,14 @@ const calculationOfCreditAndDebt = function (phonenumber, items, members) {
   return { credit, debt, balance: credit + balance - debt };
 };
 
+const groupByName = items => {
+  return items.reduce((groups, item) => {
+    const group = groups[item.group] || [];
+    group.push(item);
+    groups[item.group] = group;
+    return groups;
+  }, {});
+};
 @Service()
 export default class GroupService {
   constructor(
@@ -69,11 +76,14 @@ export default class GroupService {
     }
   }
 
-  public async AddItem(groupId, itemInputDTO, creator) {
+  public async AddItem(groupId, inputItemsDTO, creator) {
     try {
+      const inputItems = inputItemsDTO.map(item => {
+        return { ...item, creator };
+      });
       await this.groupModel.updateOne(
         { _id: groupId, 'members.phonenumber': creator },
-        { $addToSet: { items: { ...itemInputDTO, creator } } },
+        { $push: { items: { $each: inputItems } } },
       );
     } catch (e) {
       this.logger.error(e);
@@ -83,9 +93,12 @@ export default class GroupService {
 
   public async GetAll(user) {
     try {
-      const groups = user.groups;
-      return groups.map(({ key, __v, ...data }) => {
-        return { ...data, ...calculationOfCreditAndDebt(user.phonenumber, data.items, data.members) };
+      return user.groups.map(({ key, __v, ...data }) => {
+        return {
+          ...data,
+          ...calculationOfCreditAndDebt(user.phonenumber, data.items, data.members),
+          items: groupByName(data.items),
+        };
       });
     } catch (e) {
       this.logger.error(e);
@@ -97,7 +110,11 @@ export default class GroupService {
     try {
       let groups = user.groups.filter(group => group._id == groupId);
       groups = groups.map(({ key, __v, ...data }) => {
-        return { ...data, ...calculationOfCreditAndDebt(user.phonenumber, data.items, data.members) };
+        return {
+          ...data,
+          ...calculationOfCreditAndDebt(user.phonenumber, data.items, data.members),
+          items: groupByName(data.items),
+        };
       });
       return groups.length == 1 ? groups[0] : {};
     } catch (e) {
