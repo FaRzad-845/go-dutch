@@ -45,6 +45,7 @@ const Group = new mongoose.Schema(
 
     items: [
       {
+        group: String,
         name: String,
         count: Number,
         unit: Number,
